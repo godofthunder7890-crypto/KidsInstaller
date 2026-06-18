@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center"
+    android:padding="40dp" android:background="#FFFFFF">
+    <ImageView android:layout_width="80dp" android:layout_height="80dp"
+        android:src="@android:drawable/ic_popup_sync"
+        android:layout_marginBottom="28dp"/>
+    <TextView android:id="@+id/tvStatus"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Checking for updates..."
+        android:textSize="20sp" android:textStyle="bold"
+        android:textColor="#212121" android:gravity="center"
+        android:layout_marginBottom="10dp"/>
+    <TextView android:id="@+id/tvSub"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Please wait" android:textSize="14sp"
+        android:textColor="#757575" android:gravity="center"
+        android:layout_marginBottom="28dp"/>
+    <ProgressBar android:id="@+id/progressBar"
+        style="@android:style/Widget.Material.ProgressBar.Horizontal"
+        android:layout_width="match_parent" android:layout_height="8dp"
+        android:max="100" android:layout_marginBottom="28dp"
+        android:progressTint="#1976D2" android:indeterminateTint="#1976D2"/>
+    <Button android:id="@+id/btnAction"
+        android:layout_width="match_parent" android:layout_height="52dp"
+        android:text="Install" android:textSize="16sp"
+        android:backgroundTint="#1976D2" android:textColor="#FFFFFF"
+        android:visibility="gone"/>
+</LinearLayout>
