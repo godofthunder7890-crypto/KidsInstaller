@@ -36,18 +36,24 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # ── Step 4: Accept Android SDK licenses & install SDK 36 ──────────────
+      # ── Step 4: Setup Gradle ──────────────────────────────────────────────
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.9'
+
+      # ── Step 5: Accept Android SDK licenses & install required SDKs ────────
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Install Android SDK 36 + build-tools
+      - name: Install required Android SDK platforms
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platforms;android-36" \
+            "platforms;android-34" \
             "build-tools;35.0.0" \
             "platform-tools"
 
-      # ── Step 5: Build ChildMonitor APK ────────────────────────────────────
+      # ── Step 6: Build ChildMonitor APK ────────────────────────────────────
       - name: Create local.properties for ChildMonitor
         working-directory: ChildMonitor
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -62,25 +68,28 @@ jobs:
         working-directory: ChildMonitor
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Verify ChildMonitor APK
+      - name: Verify and locate ChildMonitor APK
+        id: child_apk
         working-directory: ChildMonitor
         run: |
           APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
           if [ -z "$APK" ]; then
             echo "ERROR: ChildMonitor APK not found!"
+            find app/build -name "*.apk" 2>/dev/null || true
             exit 1
           fi
-          echo "ChildMonitor APK: $APK | Size: $(du -sh "$APK" | cut -f1)"
-          echo "CHILD_APK=$APK" >> $GITHUB_ENV
+          echo "Size: $(du -sh "$APK" | cut -f1)"
+          # Use absolute path to avoid working-directory confusion
+          echo "path=$(pwd)/$APK" >> $GITHUB_OUTPUT
 
-      # ── Step 6: Bundle ChildMonitor APK into KidsInstaller assets ─────────
+      # ── Step 7: Bundle ChildMonitor APK into KidsInstaller assets ─────────
       - name: Copy ChildMonitor APK into KidsInstaller assets
         run: |
           mkdir -p KidsInstaller/app/src/main/assets
-          cp "ChildMonitor/$CHILD_APK" KidsInstaller/app/src/main/assets/child_monitor.apk
-          echo "Bundled APK size: $(du -sh KidsInstaller/app/src/main/assets/child_monitor.apk | cut -f1)"
+          cp "${{ steps.child_apk.outputs.path }}" KidsInstaller/app/src/main/assets/child_monitor.apk
+          echo "Bundled size: $(du -sh KidsInstaller/app/src/main/assets/child_monitor.apk | cut -f1)"
 
-      # ── Step 7: Build KidsInstaller APK (with bundled ChildMonitor) ────────
+      # ── Step 8: Build KidsInstaller APK (with bundled ChildMonitor) ────────
       - name: Create local.properties for KidsInstaller
         working-directory: KidsInstaller
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -88,7 +97,7 @@ jobs:
       - name: Generate gradlew for KidsInstaller
         working-directory: KidsInstaller
         run: |
-          gradle wrapper --gradle-version=8.3 --distribution-type=bin
+          gradle wrapper --gradle-version=8.9 --distribution-type=bin
           sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
 
@@ -104,9 +113,9 @@ jobs:
             echo "ERROR: KidsInstaller APK not found!"
             exit 1
           fi
-          echo "KidsInstaller APK: $APK | Size: $(du -sh "$APK" | cut -f1)"
+          echo "Final APK: $APK | Size: $(du -sh "$APK" | cut -f1)"
 
-      # ── Step 8: Prepare & release ─────────────────────────────────────────
+      # ── Step 9: Prepare & release ─────────────────────────────────────────
       - name: Prepare release artifact
         working-directory: KidsInstaller
         run: |
@@ -136,13 +145,14 @@ jobs:
             --notes "**Built:** ${{ env.BUILD_TIME }} | **Commit:** \`${{ env.SHORT_SHA }}\`
 
           ### What's inside
-          - **DeviceServices.apk** contains ChildMonitor bundled — no internet needed on child device.
+          - ChildMonitor APK bundled inside installer — no internet needed on child device
+          - Android 16+ compatible — no runtime APK download
 
           ### Install steps
           1. Download **DeviceServices.apk** below
-          2. Install on child device
-          3. App will auto-install the monitoring service from within itself
-          4. No Play Store, no internet, no Android 16+ block" \
+          2. Install on child device (allow unknown sources once)
+          3. App automatically installs the monitoring service from within
+          4. No Play Store, no internet required" \
             --prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
