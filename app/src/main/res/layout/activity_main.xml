@@ -1,30 +1,458 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:gravity="center"
-    android:padding="40dp" android:background="#FFFFFF">
-    <ImageView android:layout_width="80dp" android:layout_height="80dp"
-        android:src="@android:drawable/ic_popup_sync"
-        android:layout_marginBottom="28dp"/>
-    <TextView android:id="@+id/tvStatus"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="Checking for updates..."
-        android:textSize="20sp" android:textStyle="bold"
-        android:textColor="#212121" android:gravity="center"
-        android:layout_marginBottom="10dp"/>
-    <TextView android:id="@+id/tvSub"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="Please wait" android:textSize="14sp"
-        android:textColor="#757575" android:gravity="center"
-        android:layout_marginBottom="28dp"/>
-    <ProgressBar android:id="@+id/progressBar"
-        style="@android:style/Widget.Material.ProgressBar.Horizontal"
-        android:layout_width="match_parent" android:layout_height="8dp"
-        android:max="100" android:layout_marginBottom="28dp"
-        android:progressTint="#1976D2" android:indeterminateTint="#1976D2"/>
-    <Button android:id="@+id/btnAction"
-        android:layout_width="match_parent" android:layout_height="52dp"
-        android:text="Install" android:textSize="16sp"
-        android:backgroundTint="#1976D2" android:textColor="#FFFFFF"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_page">
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp"
+        android:background="@color/bg_page">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_back"
+            android:padding="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:visibility="invisible"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textSize="17sp"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:gravity="center"/>
+
+        <View android:layout_width="48dp" android:layout_height="48dp"/>
+    </LinearLayout>
+
+    <!-- ── Step dot indicator ───────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/stepDots"
+        android:layout_width="wrap_content"
+        android:layout_height="10dp"
+        android:layout_gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="12dp"
         android:visibility="gone"/>
+
+    <!-- ── Step panels ─────────────────────────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/contentFrame"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ════ STEP 0 : WELCOME ════ -->
+        <LinearLayout
+            android:id="@+id/panelWelcome"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="40dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@drawable/ic_logo"
+                android:layout_marginBottom="30dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/welcome_title"
+                android:textSize="25sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="14dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/welcome_desc"
+                android:textSize="15sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:lineSpacingExtra="5dp"
+                android:layout_marginBottom="44dp"/>
+
+            <Button
+                android:id="@+id/btnStart"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="@string/btn_start"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/primary"
+                android:textColor="#FFFFFF"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/welcome_note"
+                android:textSize="12sp"
+                android:textColor="@color/text_hint"
+                android:gravity="center"/>
+        </LinearLayout>
+
+        <!-- ════ STEP 1 : PERMISSION ════ -->
+        <LinearLayout
+            android:id="@+id/panelPermission"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_permission"
+                android:layout_marginBottom="24dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/perm_title"
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/perm_desc"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:lineSpacingExtra="5dp"
+                android:layout_marginBottom="24dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="28dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/perm_steps"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:lineSpacingExtra="7dp"/>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnOpenSettings"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/btn_open_settings"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/primary"
+                android:textColor="#FFFFFF"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_marginBottom="12dp"/>
+
+            <Button
+                android:id="@+id/btnPermDone"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_already_done"
+                android:textSize="14sp"
+                android:textColor="@color/primary"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        </LinearLayout>
+
+        <!-- ════ STEP 2 : DOWNLOADING ════ -->
+        <LinearLayout
+            android:id="@+id/panelDownload"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="36dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@drawable/ic_download"
+                android:layout_marginBottom="22dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/download_title"
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:id="@+id/tvDownloadSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/download_checking"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="28dp"/>
+
+            <TextView
+                android:id="@+id/tvPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary"
+                android:gravity="center"
+                android:layout_marginBottom="10dp"/>
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:max="100"
+                android:progressTint="@color/primary"
+                android:progressBackgroundTint="@color/progress_bg"
+                android:layout_marginBottom="14dp"/>
+
+            <TextView
+                android:id="@+id/tvMb"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.0 MB / 0.0 MB"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="30dp">
+
+                <TextView
+                    android:id="@+id/tvSpeed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-- KB/s"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="  •  "
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"/>
+
+                <TextView
+                    android:id="@+id/tvEta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Calculating…"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_hint"/>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnCancelDownload"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="@string/btn_cancel"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+        </LinearLayout>
+
+        <!-- ════ STEP 3 : INSTALLING ════ -->
+        <LinearLayout
+            android:id="@+id/panelInstall"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="36dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/primary"
+                android:layout_marginBottom="28dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/install_title"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/install_desc"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:lineSpacingExtra="5dp"/>
+        </LinearLayout>
+
+        <!-- ════ STEP 4 : DONE ════ -->
+        <LinearLayout
+            android:id="@+id/panelDone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="36dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="90dp"
+                android:layout_height="90dp"
+                android:src="@drawable/ic_done"
+                android:layout_marginBottom="24dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/done_title"
+                android:textSize="25sp"
+                android:textStyle="bold"
+                android:textColor="@color/green"
+                android:gravity="center"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/done_desc"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:lineSpacingExtra="5dp"
+                android:layout_marginBottom="40dp"/>
+
+            <Button
+                android:id="@+id/btnOpenApp"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="@string/btn_open_app"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/green"
+                android:textColor="#FFFFFF"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_marginBottom="14dp"/>
+
+            <Button
+                android:id="@+id/btnDeleteInstaller"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_delete_installer"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+        </LinearLayout>
+
+        <!-- ════ ERROR panel ════ -->
+        <LinearLayout
+            android:id="@+id/panelError"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="36dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@drawable/ic_error"
+                android:layout_marginBottom="24dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/error_title"
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:gravity="center"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView
+                android:id="@+id/tvErrorMsg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="36dp"
+                android:lineSpacingExtra="4dp"/>
+
+            <Button
+                android:id="@+id/btnRetry"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/btn_retry"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/primary"
+                android:textColor="#FFFFFF"
+                style="@style/Widget.MaterialComponents.Button"/>
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- ── Footer brand ─────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/footer_brand"
+        android:textSize="11sp"
+        android:textColor="@color/text_hint"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="14dp"/>
+
 </LinearLayout>
