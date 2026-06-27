@@ -64,7 +64,7 @@ object VersionChecker {
 
             if (apkUrl.isEmpty()) return null
 
-            val sha256 = if (sha256Url.isNotEmpty()) fetchText(client, sha256Url, githubToken) else ""
+            val sha256 = if (sha256Url.isNotEmpty()) fetchText(client, sha256Url) else ""
             ReleaseInfo(version, apkUrl, sha256.trim())
         } catch (_: Exception) { null }
     }
