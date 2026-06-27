@@ -119,7 +119,13 @@ class MainActivity : AppCompatActivity() {
             when (intent?.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
                 PackageInstaller.STATUS_SUCCESS -> showStep(STEP_DONE)
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                    intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)?.let { startActivity(it) }
+                    // BUG #15 FIX: Use API 33+ getParcelableExtra with class param
+                      val launchIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                          intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+                      } else {
+                          @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_INTENT)
+                      }
+                      launchIntent?.let { startActivity(it) }
                 }
                 else -> {
                     val f = downloadedFile ?: File(cacheDir, "update.apk")
@@ -324,7 +330,8 @@ class MainActivity : AppCompatActivity() {
                             written += read
                             val pct   = if (totalBytes > 0) (written * 100 / totalBytes).toInt() else 0
                             val ms    = (System.currentTimeMillis() - startMs).coerceAtLeast(1)
-                            val spd   = (written / ms).toInt()
+                            // BUG #12 FIX: bytes/ms ≠ KB/s
+                            val spd   = (written * 1000L / (ms * 1024L)).toInt()
                             val mbD   = written / 1_048_576f
                             val mbT   = totalBytes / 1_048_576f
                             runOnUiThread { updateDownloadUI(pct, mbD, mbT, spd, -1) }

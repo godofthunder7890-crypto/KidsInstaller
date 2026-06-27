@@ -64,6 +64,15 @@ class DownloadService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val url    = intent?.getStringExtra(EXTRA_URL)    ?: run { stopSelf(); return START_NOT_STICKY }
         val sha256 = intent.getStringExtra(EXTRA_SHA256) ?: ""
+        // BUG #13 FIX: If OS restarts service mid-download, skip re-download if file already complete
+        val existingApk = File(cacheDir, "update.apk")
+        if (existingApk.exists() && existingApk.length() > 0) {
+            val sha256Check = sha256
+            if (sha256Check.isBlank() || SHA256Helper.verify(existingApk, sha256Check)) {
+                broadcastComplete(existingApk.absolutePath)
+                stopSelf(); return START_NOT_STICKY
+            }
+        }
         activeJob?.cancel(true)
         activeJob = executor.submit { download(url, sha256) }
         return START_NOT_STICKY
@@ -98,12 +107,13 @@ class DownloadService : Service() {
                             downloaded += read
 
                             val ms      = (System.currentTimeMillis() - t0).coerceAtLeast(1L)
-                            val speedKb = (downloaded / ms).toInt()            // KB/s
+                            // BUG #12 FIX: bytes/ms is NOT KB/s; correct: bytes*1000/(ms*1024) = KB/s
+                            val speedKb = (downloaded * 1000L / (ms * 1024L)).toInt()
                             val pct     = if (total > 0) (downloaded * 100 / total).toInt() else -1
                             val mbDone  = downloaded / 1_048_576f
                             val mbTotal = total.coerceAtLeast(0L) / 1_048_576f
                             val etaSec  = if (speedKb > 0 && total > 0)
-                                ((total - downloaded) / (speedKb * 1000L)).toInt() else -1
+                                ((total - downloaded) / (speedKb.toLong() * 1024L)).toInt() else -1  // KB/s * 1024 = bytes/s
 
                             broadcastProgress(pct, mbDone, mbTotal, speedKb, etaSec)
                             notify("Downloading…", pct.coerceAtLeast(0), indeterminate = pct < 0)

@@ -43,7 +43,7 @@ object VersionChecker {
         } catch (_: Exception) { null }
     }
 
-    private fun parseRelease(client: OkHttpClient, json: String): ReleaseInfo? {
+    private fun parseRelease(client: OkHttpClient, json: String, githubToken: String = ""): ReleaseInfo? {
         return try {
             val root    = JSONObject(json)
             val version = root.optString("tag_name", "")
@@ -64,7 +64,7 @@ object VersionChecker {
 
             if (apkUrl.isEmpty()) return null
 
-            val sha256 = if (sha256Url.isNotEmpty()) fetchText(client, sha256Url) else ""
+            val sha256 = if (sha256Url.isNotEmpty()) fetchText(client, sha256Url, githubToken) else ""
             ReleaseInfo(version, apkUrl, sha256.trim())
         } catch (_: Exception) { null }
     }
