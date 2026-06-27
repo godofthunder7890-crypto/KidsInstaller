@@ -1,39 +1,79 @@
-name: Build Debug APK
+name: Build KidsInstaller APK + Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Install Android SDK 36 & Build Tools
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Make gradlew executable
+        run: sed -i 's/\r$//' ./gradlew && chmod +x ./gradlew
+
+      - name: Generate signing keystore
+        run: |
+          keytool -genkey -v -keystore release.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass guardian_2024 -keypass guardian_2024 \
+            -alias guardian \
+            -dname "CN=GuardianEye,OU=Dev,O=Personal,L=IN,S=IN,C=IN"
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          KEYSTORE_PATH: release.jks
+          STORE_PASS: guardian_2024
+          KEY_ALIAS: guardian
+          KEY_PASS: guardian_2024
 
-      - name: Upload Debug APK
+      - name: Rename APK for release
+        run: cp app/build/outputs/apk/debug/app-debug.apk KidsInstaller.apk
+
+      - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KidsInstaller-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: KidsInstaller-debug-APK-${{ github.run_number }}
+          path: KidsInstaller.apk
           retention-days: 30
+
+      - name: Delete previous latest-build release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+
+      - name: Create GitHub Release with APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest-build \
+            --title "KidsInstaller — Latest Build ($(date '+%Y-%m-%d %H:%M'))" \
+            --notes "Install this on child's device first. It will automatically download and install ChildMonitor." \
+            --latest \
+            KidsInstaller.apk
