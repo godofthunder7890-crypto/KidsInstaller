@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <application
         android:allowBackup="false"
+        android:icon="@drawable/ic_logo"
         android:label="Device Services"
         android:supportsRtl="true"
         android:theme="@style/Theme.App"
