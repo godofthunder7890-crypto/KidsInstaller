@@ -1,3 +1,47 @@
 <resources>
     <string name="app_name">Device Services</string>
+
+    <!-- Welcome -->
+    <string name="welcome_title">Setting Up Device Services</string>
+    <string name="welcome_desc">This tool will install the Family Safety monitor that helps you keep your child safe online.</string>
+    <string name="welcome_note">By continuing you agree to our Terms of Use</string>
+    <string name="btn_start">Get Started</string>
+
+    <!-- Permission -->
+    <string name="perm_title">Allow App Installation</string>
+    <string name="perm_desc">To install Device Services you need to allow this app to install packages from unknown sources.</string>
+    <string name="perm_steps">1. Tap "Open Settings" below\n2. Find "Install unknown apps"\n3. Enable the toggle\n4. Come back here and tap "Done"</string>
+    <string name="btn_open_settings">Open Settings</string>
+    <string name="btn_already_done">I\'ve Already Done This</string>
+    <string name="perm_not_granted">Permission not granted yet. Please enable it in Settings first.</string>
+
+    <!-- Download -->
+    <string name="download_title">Downloading…</string>
+    <string name="download_checking">Checking for latest version…</string>
+    <string name="download_extracting">Extracting package…</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="eta_calculating">Calculating…</string>
+    <string name="eta_seconds">%d sec remaining</string>
+    <string name="eta_minutes">%d min remaining</string>
+
+    <!-- Install -->
+    <string name="install_title">Installing…</string>
+    <string name="install_desc">Please do not close this screen.\nThe installation may take a few moments.</string>
+
+    <!-- Done -->
+    <string name="done_title">Setup Complete!</string>
+    <string name="done_desc">The Family Safety app has been installed successfully. You can now remove this installer.</string>
+    <string name="btn_open_app">Launch App</string>
+    <string name="btn_delete_installer">Remove Installer (Recommended)</string>
+
+    <!-- Error -->
+    <string name="error_title">Something Went Wrong</string>
+    <string name="btn_retry">Try Again</string>
+
+    <!-- Crash -->
+    <string name="crash_title">App Crashed</string>
+    <string name="crash_restart">Restart App</string>
+
+    <!-- Footer -->
+    <string name="footer_brand">Device Services • Family Safety</string>
 </resources>
