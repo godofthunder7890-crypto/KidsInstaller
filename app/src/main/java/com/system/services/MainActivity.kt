@@ -152,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
         showStep(STEP_WELCOME)
         fetchLatestVersion()          // Flash Get: GetInstallConfig equivalent
+        lifecycleScope.launch { AutoUpdater.checkAndUpdate(this@MainActivity) }
     }
 
     // ── Bind all view references ──────────────────────────────────────────
