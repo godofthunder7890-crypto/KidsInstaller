@@ -252,6 +252,7 @@ class MainActivity : AppCompatActivity() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             )
+            finish()
         }
     }
 
@@ -368,8 +369,10 @@ class MainActivity : AppCompatActivity() {
             progressBar.isIndeterminate = true
             tvPercent.text = "--"
         }
-        tvMb.text    = String.format("%.1f MB / %.1f MB", mbDone, mbTotal)
-        tvSpeed.text = if (speedKbs > 0) "${speedKbs} KB/s" else "-- KB/s"
+        tvMb.text = String.format("%.1f MB / %.1f MB", mbDone, mbTotal)
+        tvMb.visibility = View.VISIBLE
+        tvSpeed.text = "${speedKbs} KB/s"
+        tvSpeed.visibility = View.VISIBLE
         tvEta.text   = when {
             etaSecs < 0   -> getString(R.string.eta_calculating)
             etaSecs < 60  -> getString(R.string.eta_seconds,  etaSecs)
