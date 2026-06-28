@@ -319,7 +319,8 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val outFile = File(cacheDir, "update.apk")
-                val totalBytes = assets.openFd(BUNDLED_APK_NAME).length
+                // BUG FIX: openFd() was never closed → file descriptor leak
+                val totalBytes = assets.openFd(BUNDLED_APK_NAME).use { it.length }
                 var written = 0L
                 val startMs = System.currentTimeMillis()
                 assets.open(BUNDLED_APK_NAME).use { input ->
