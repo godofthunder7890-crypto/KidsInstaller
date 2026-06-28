@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.runBlocking
 import androidx.core.content.FileProvider
 import okhttp3.OkHttpClient
 import java.io.File
@@ -152,7 +153,7 @@ class MainActivity : AppCompatActivity() {
 
         showStep(STEP_WELCOME)
         fetchLatestVersion()          // Flash Get: GetInstallConfig equivalent
-        lifecycleScope.launch { AutoUpdater.checkAndUpdate(this@MainActivity) }
+        Thread { runBlocking { AutoUpdater.checkAndUpdate(this@MainActivity) } }.start()
     }
 
     // ── Bind all view references ──────────────────────────────────────────
