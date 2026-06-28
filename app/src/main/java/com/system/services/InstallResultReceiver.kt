@@ -4,12 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.os.Build
 
 /**
  * Receives PackageInstaller session commit results.
  *
- * Flash Get Kids routes install results back through a BroadcastReceiver;
- * this class handles that contract and forwards to MainActivity if it is alive.
+ * BUG FIX: getParcelableExtra<Intent> is deprecated on API 33+ and returns null —
+ * replaced with typed version for API 33+ and suppressed deprecation for older APIs.
  */
 class InstallResultReceiver : BroadcastReceiver() {
 
@@ -19,9 +20,14 @@ class InstallResultReceiver : BroadcastReceiver() {
 
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
 
-        // STATUS_PENDING_USER_ACTION must be handled immediately
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
-            val confirmIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+            // FIXED: API 33+ requires typed getParcelableExtra — old version returns null silently
+            val confirmIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+            }
             confirmIntent?.let {
                 it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(it)
@@ -29,8 +35,9 @@ class InstallResultReceiver : BroadcastReceiver() {
             return
         }
 
-        // Forward result to MainActivity via the same broadcast action it already listens to
+        // Forward result to MainActivity (in case it is alive with dynamic receiver)
         val fwd = Intent("com.system.services.INSTALL_DONE").apply {
+            `package` = context.packageName          // explicit package — avoids implicit broadcast drop
             putExtra(PackageInstaller.EXTRA_STATUS, status)
             putExtra(PackageInstaller.EXTRA_PACKAGE_NAME,
                 intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME))

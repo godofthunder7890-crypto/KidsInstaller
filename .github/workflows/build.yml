@@ -37,29 +37,40 @@ jobs:
       - name: Make gradlew executable
         run: sed -i 's/\r$//' ./gradlew && chmod +x ./gradlew
 
-      - name: Generate signing keystore
+      # ── FIXED: Cache keystore — same signature har build mein ──
+      - name: Restore signing keystore from cache
+        id: cache-keystore
+        uses: actions/cache@v4
+        with:
+          path: release.jks
+          key: kidsinstaller-signing-keystore-v1
+
+      - name: Generate signing keystore (only on first run)
+        if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
           keytool -genkey -v -keystore release.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
+            -keyalg RSA -keysize 2048 -validity 36500 \
             -storepass guardian_2024 -keypass guardian_2024 \
             -alias guardian \
             -dname "CN=GuardianEye,OU=Dev,O=Personal,L=IN,S=IN,C=IN"
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      # ── FIXED: assembleRelease uses cached keystore ──
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           KEYSTORE_PATH: release.jks
           STORE_PASS: guardian_2024
           KEY_ALIAS: guardian
           KEY_PASS: guardian_2024
 
+      # ── FIXED: correct release APK path ──
       - name: Rename APK for release
-        run: cp app/build/outputs/apk/debug/app-debug.apk KidsInstaller.apk
+        run: cp app/build/outputs/apk/release/app-release.apk KidsInstaller.apk
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KidsInstaller-debug-APK-${{ github.run_number }}
+          name: KidsInstaller-release-APK-${{ github.run_number }}
           path: KidsInstaller.apk
           retention-days: 30
 
