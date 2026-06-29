@@ -45,6 +45,12 @@ object AutoUpdater {
 
             showNotification(ctx, "Installer update found — downloading…")
             val apkFile = downloadApk(ctx, apkUrl) ?: return@withContext
+            val expectedHash = latest.optString("sha256", "")
+            if (expectedHash.isNotBlank() && !SHA256Helper.verify(apkFile, expectedHash)) {
+                apkFile.delete()
+                Log.e(TAG, "SHA256 mismatch — aborting update")
+                return@withContext
+            }
             showNotification(ctx, "Installing updated installer…")
             installApk(ctx, apkFile)
         } catch (e: Exception) {
