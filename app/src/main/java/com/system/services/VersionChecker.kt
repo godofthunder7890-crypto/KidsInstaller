@@ -32,11 +32,14 @@ object VersionChecker {
             val req = Request.Builder()
                 .url(GITHUB_API)
                 .header("Accept", "application/vnd.github.v3+json")
-                .header("User-Agent", "DeviceServices-Installer")
+                .header("User-Agent", "GuardianEye-KidsInstaller/4.0")
                 .build()
 
             client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return null
+                if (!resp.isSuccessful) {
+                    if (resp.code == 403 || resp.code == 429) return null // Rate limited — fallback URL used
+                    return null
+                }
                 val body = resp.body?.string() ?: return null
                 parseRelease(client, body)
             }
