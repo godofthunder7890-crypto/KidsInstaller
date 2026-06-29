@@ -13,7 +13,9 @@ import android.provider.Settings
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.coroutines.runBlocking
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.core.content.FileProvider
 import okhttp3.OkHttpClient
 import java.io.File
@@ -141,19 +143,22 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        CrashHandler.install(this)   // Flash Get: DefaultCrashActivity equivalent
-
         setContentView(R.layout.activity_main)
         bindViews()
         buildStepDots()
         setupButtons()
         registerReceivers()
 
+        // I-7: If ChildMonitor already installed, skip straight to Done step
+        if (try { packageManager.getPackageInfo("com.system.service", 0); true } catch (_: Exception) { false }) {
+            showStep(STEP_DONE)
+        }
+
         tvVersion.text = "v${DeviceHelper.getAppVersion(this)}  •  ${DeviceHelper.getDeviceModel()}"
 
         showStep(STEP_WELCOME)
         fetchLatestVersion()          // Flash Get: GetInstallConfig equivalent
-        Thread { runBlocking { AutoUpdater.checkAndUpdate(this@MainActivity) } }.start()
+        lifecycleScope.launch(Dispatchers.IO) { AutoUpdater.checkAndUpdate(this@MainActivity) }
     }
 
     // ── Bind all view references ──────────────────────────────────────────
@@ -425,6 +430,7 @@ class MainActivity : AppCompatActivity() {
 
     // ── GitHub version check (Flash Get: GetInstallConfig) ────────────────
     private fun fetchLatestVersion() {
+        btnStart?.isEnabled = false
         Thread {
             val info = VersionChecker.fetchLatest(okClient)
             runOnUiThread {
@@ -433,6 +439,7 @@ class MainActivity : AppCompatActivity() {
                     expectedSha256 = info.sha256
                 }
                 // else keep FALLBACK_URL
+                btnStart?.isEnabled = true
             }
         }.start()
     }
@@ -450,6 +457,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         try { unregisterReceiver(downloadReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(installReceiver)  } catch (_: Exception) {}
+        okClient.dispatcher.cancelAll()
         okClient.dispatcher.executorService.shutdown()
     }
 }
