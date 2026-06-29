@@ -62,8 +62,11 @@ class DownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val url    = intent?.getStringExtra(EXTRA_URL)    ?: run { stopSelf(); return START_NOT_STICKY }
+        val url    = intent?.getStringExtra(EXTRA_URL)    ?: run { stopSelf(); return START_REDELIVER_INTENT }
         val sha256 = intent.getStringExtra(EXTRA_SHA256) ?: ""
+        // I-3: Persist URL so service can resume if OS restarts it
+        getSharedPreferences("dl_prefs", MODE_PRIVATE).edit()
+            .putString("last_url", url).putString("last_sha256", sha256).apply()
         // BUG #13 FIX: If OS restarts service mid-download, skip re-download if file already complete
         val existingApk = File(cacheDir, "update.apk")
         if (existingApk.exists() && existingApk.length() > 0) {
@@ -75,7 +78,7 @@ class DownloadService : Service() {
         }
         activeJob?.cancel(true)
         activeJob = executor.submit { download(url, sha256) }
-        return START_NOT_STICKY
+        return START_REDELIVER_INTENT
     }
 
     private fun download(url: String, expectedSha256: String) {
