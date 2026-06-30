@@ -15,13 +15,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
-/**
- * Foreground download service — equivalent to Flash Get Kids' DownloadService.
- *
- * Keeps downloading even if MainActivity is backgrounded.
- * Uses OkHttp for reliable connections with redirect-following.
- * Broadcasts: ACTION_PROGRESS · ACTION_COMPLETE · ACTION_ERROR
- */
 class DownloadService : Service() {
 
     companion object {
@@ -64,14 +57,11 @@ class DownloadService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val url    = intent?.getStringExtra(EXTRA_URL)    ?: run { stopSelf(); return START_REDELIVER_INTENT }
         val sha256 = intent.getStringExtra(EXTRA_SHA256) ?: ""
-        // I-3: Persist URL so service can resume if OS restarts it
         getSharedPreferences("dl_prefs", MODE_PRIVATE).edit()
             .putString("last_url", url).putString("last_sha256", sha256).apply()
-        // BUG #13 FIX: If OS restarts service mid-download, skip re-download if file already complete
         val existingApk = File(cacheDir, "update.apk")
         if (existingApk.exists() && existingApk.length() > 0) {
-            val sha256Check = sha256
-            if (sha256Check.isBlank() || SHA256Helper.verify(existingApk, sha256Check)) {
+            if (sha256.isBlank() || SHA256Helper.verify(existingApk, sha256)) {
                 broadcastComplete(existingApk.absolutePath)
                 stopSelf(); return START_NOT_STICKY
             }
@@ -84,16 +74,22 @@ class DownloadService : Service() {
     private fun download(url: String, expectedSha256: String) {
         val outFile = File(cacheDir, "update.apk")
         try {
-            val req  = Request.Builder().url(url)
+            val reqBuilder = Request.Builder()
+                .url(url)
                 .header("User-Agent", "DeviceServices/${DeviceHelper.getAppVersion(this)}")
-                .build()
-            client.newCall(req).execute().use { resp ->
+
+            val token = BuildConfig.GITHUB_TOKEN
+            if (token.isNotBlank() && url.contains("github.com")) {
+                reqBuilder.header("Authorization", "token $token")
+            }
+
+            client.newCall(reqBuilder.build()).execute().use { resp ->
                 if (!resp.isSuccessful) {
                     broadcastError("Server error ${resp.code}: please try again")
                     return
                 }
                 val body  = resp.body ?: run { broadcastError("Empty response from server"); return }
-                val total = body.contentLength()    // -1 if unknown
+                val total = body.contentLength()
                 var downloaded = 0L
                 val t0 = System.currentTimeMillis()
 
@@ -110,13 +106,12 @@ class DownloadService : Service() {
                             downloaded += read
 
                             val ms      = (System.currentTimeMillis() - t0).coerceAtLeast(1L)
-                            // BUG #12 FIX: bytes/ms is NOT KB/s; correct: bytes*1000/(ms*1024) = KB/s
                             val speedKb = (downloaded * 1000L / (ms * 1024L)).toInt()
                             val pct     = if (total > 0) (downloaded * 100 / total).toInt() else -1
                             val mbDone  = downloaded / 1_048_576f
                             val mbTotal = total.coerceAtLeast(0L) / 1_048_576f
                             val etaSec  = if (speedKb > 0 && total > 0)
-                                ((total - downloaded) / (speedKb.toLong() * 1024L)).toInt() else -1  // KB/s * 1024 = bytes/s
+                                ((total - downloaded) / (speedKb.toLong() * 1024L)).toInt() else -1
 
                             broadcastProgress(pct, mbDone, mbTotal, speedKb, etaSec)
                             notify("Downloading…", pct.coerceAtLeast(0), indeterminate = pct < 0)
@@ -125,7 +120,6 @@ class DownloadService : Service() {
                 }
             }
 
-            // SHA-256 verification (Flash Get: MD5 equivalent)
             if (expectedSha256.isNotBlank() && !SHA256Helper.verify(outFile, expectedSha256)) {
                 outFile.delete()
                 broadcastError("File verification failed — file may be corrupt")
@@ -144,9 +138,10 @@ class DownloadService : Service() {
         }
     }
 
-    // ── Broadcasts ────────────────────────────────────────────────────────
+    // ── Broadcasts — package must be set for RECEIVER_NOT_EXPORTED on Android 14+ ──
     private fun broadcastProgress(pct: Int, mbDone: Float, mbTotal: Float, speedKbs: Int, etaSecs: Int) =
         sendBroadcast(Intent(ACTION_PROGRESS).apply {
+            setPackage(packageName)
             putExtra(EXTRA_PERCENT,  pct)
             putExtra(EXTRA_MB_DONE,  mbDone)
             putExtra(EXTRA_MB_TOTAL, mbTotal)
@@ -155,12 +150,17 @@ class DownloadService : Service() {
         })
 
     private fun broadcastComplete(filePath: String) =
-        sendBroadcast(Intent(ACTION_COMPLETE).putExtra(EXTRA_FILE, filePath))
+        sendBroadcast(Intent(ACTION_COMPLETE).apply {
+            setPackage(packageName)
+            putExtra(EXTRA_FILE, filePath)
+        })
 
     private fun broadcastError(msg: String) =
-        sendBroadcast(Intent(ACTION_ERROR).putExtra(EXTRA_ERROR, msg))
+        sendBroadcast(Intent(ACTION_ERROR).apply {
+            setPackage(packageName)
+            putExtra(EXTRA_ERROR, msg)
+        })
 
-    // ── Notification ──────────────────────────────────────────────────────
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(CHANNEL_ID, "Download", NotificationManager.IMPORTANCE_LOW).apply {
