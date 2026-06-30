@@ -60,7 +60,7 @@ jobs:
           STORE_PASS: guardian_2024
           KEY_ALIAS: guardian
           KEY_PASS: guardian_2024
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_ACCESS_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
 
       - name: Rename APK for release
         run: cp app/build/outputs/apk/release/app-release.apk KidsInstaller.apk
