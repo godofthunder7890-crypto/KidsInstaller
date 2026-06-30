@@ -4,14 +4,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
-/**
- * Checks GitHub Releases API for the latest ChildMonitor APK.
- * Equivalent to Flash Get Kids' GetInstallConfig / VersionChecker.
- *
- * Expected release assets:
- *   ChildMonitor.apk        — the APK download
- *   ChildMonitor.apk.sha256 — plain text file with the SHA-256 hash (optional)
- */
 object VersionChecker {
 
     private const val GITHUB_API =
@@ -23,36 +15,33 @@ object VersionChecker {
         val sha256: String = ""
     )
 
-    /**
-     * Fetch the latest release info. Returns null on any failure.
-     * Must be called from a background thread.
-     */
     fun fetchLatest(client: OkHttpClient): ReleaseInfo? {
         return try {
-            val req = Request.Builder()
+            val reqBuilder = Request.Builder()
                 .url(GITHUB_API)
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("User-Agent", "GuardianEye-KidsInstaller/4.0")
-                .build()
 
-            client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) {
-                    if (resp.code == 403 || resp.code == 429) return null // Rate limited — fallback URL used
-                    return null
-                }
+            val token = BuildConfig.GITHUB_TOKEN
+            if (token.isNotBlank()) {
+                reqBuilder.header("Authorization", "token $token")
+            }
+
+            client.newCall(reqBuilder.build()).execute().use { resp ->
+                if (!resp.isSuccessful) return null
                 val body = resp.body?.string() ?: return null
                 parseRelease(client, body)
             }
         } catch (_: Exception) { null }
     }
 
-    private fun parseRelease(client: OkHttpClient, json: String, githubToken: String = ""): ReleaseInfo? {
+    private fun parseRelease(client: OkHttpClient, json: String): ReleaseInfo? {
         return try {
             val root    = JSONObject(json)
             val version = root.optString("tag_name", "")
             val assets  = root.optJSONArray("assets") ?: return null
 
-            var apkUrl  = ""
+            var apkUrl    = ""
             var sha256Url = ""
 
             for (i in 0 until assets.length()) {
