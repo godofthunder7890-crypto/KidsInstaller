@@ -12,6 +12,8 @@ android {
         versionCode 4
         versionName '4.0'
         buildConfigField "String", "GITHUB_TOKEN", "\"${System.getenv('GITHUB_ACCESS_TOKEN') ?: ''}\""
+        // Baked-in build timestamp so AutoUpdater can compare with release publish date
+        buildConfigField "long", "BUILD_TIME", "${System.currentTimeMillis()}L"
     }
     signingConfigs {
         release {
