@@ -37,7 +37,6 @@ jobs:
       - name: Make gradlew executable
         run: sed -i 's/\r$//' ./gradlew && chmod +x ./gradlew
 
-      # ── FIXED: Cache keystore — same signature har build mein ──
       - name: Restore signing keystore from cache
         id: cache-keystore
         uses: actions/cache@v4
@@ -54,7 +53,6 @@ jobs:
             -alias guardian \
             -dname "CN=GuardianEye,OU=Dev,O=Personal,L=IN,S=IN,C=IN"
 
-      # ── FIXED: assembleRelease uses cached keystore ──
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace
         env:
@@ -62,8 +60,8 @@ jobs:
           STORE_PASS: guardian_2024
           KEY_ALIAS: guardian
           KEY_PASS: guardian_2024
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_ACCESS_TOKEN }}
 
-      # ── FIXED: correct release APK path ──
       - name: Rename APK for release
         run: cp app/build/outputs/apk/release/app-release.apk KidsInstaller.apk
 
