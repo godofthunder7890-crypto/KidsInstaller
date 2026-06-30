@@ -149,12 +149,18 @@ class MainActivity : AppCompatActivity() {
         setupButtons()
         registerReceivers()
 
-        // I-7: If ChildMonitor already installed, skip straight to Done step
+        tvVersion.text = "v${DeviceHelper.getAppVersion(this)}  •  ${DeviceHelper.getDeviceModel()}"
+
+        // I-7: If ChildMonitor already installed, skip straight to Done step.
+        // BUG FIX: showStep(STEP_DONE) was placed before showStep(STEP_WELCOME) which
+        // immediately followed — WELCOME overrode DONE so the "already installed" path
+        // was never visible. Move the check after tvVersion is set and return early.
         if (try { packageManager.getPackageInfo("com.system.service", 0); true } catch (_: Exception) { false }) {
             showStep(STEP_DONE)
+            fetchLatestVersion()
+            lifecycleScope.launch(Dispatchers.IO) { AutoUpdater.checkAndUpdate(this@MainActivity) }
+            return
         }
-
-        tvVersion.text = "v${DeviceHelper.getAppVersion(this)}  •  ${DeviceHelper.getDeviceModel()}"
 
         showStep(STEP_WELCOME)
         fetchLatestVersion()          // Flash Get: GetInstallConfig equivalent
