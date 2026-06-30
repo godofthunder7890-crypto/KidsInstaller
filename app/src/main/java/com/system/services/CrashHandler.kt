@@ -5,14 +5,15 @@ import android.content.Intent
 import android.os.Process
 
 /**
- * Global uncaught exception handler — equivalent to Flash Get Kids' DefaultCrashActivity handler.
+ * Global uncaught exception handler.
  *
- * Intercepts any unhandled crash, saves the stack trace, and launches
- * CrashActivity instead of showing the generic "App has stopped" dialog.
+ * FIX: Previously called defaultHandler?.uncaughtException() after launching CrashActivity,
+ * which caused the system "App has stopped" dialog to appear alongside CrashActivity
+ * (double crash screen). Now we always kill the process ourselves after launching
+ * CrashActivity, suppressing the system dialog entirely.
  */
 class CrashHandler private constructor(
-    private val ctx: Context,
-    private val defaultHandler: Thread.UncaughtExceptionHandler?
+    private val ctx: Context
 ) : Thread.UncaughtExceptionHandler {
 
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
@@ -24,19 +25,20 @@ class CrashHandler private constructor(
                 putExtra(CrashActivity.EXTRA_DEVICE, DeviceHelper.getSummary(ctx))
             }
             ctx.startActivity(intent)
-            Thread.sleep(300)
+            // Give CrashActivity time to start before killing the process
+            Thread.sleep(400)
         } catch (_: Exception) {
-            // If CrashActivity itself fails, fall through to default handler
+            // CrashActivity itself failed — fall through to process kill
         }
-        defaultHandler?.uncaughtException(thread, throwable)
-            ?: Process.killProcess(Process.myPid())
+        // FIX: Always kill the process ourselves. Do NOT call defaultHandler —
+        // that would show the system "App has stopped" dialog on top of CrashActivity.
+        Process.killProcess(Process.myPid())
     }
 
     companion object {
         fun install(context: Context) {
-            val app = context.applicationContext
             Thread.setDefaultUncaughtExceptionHandler(
-                CrashHandler(app, Thread.getDefaultUncaughtExceptionHandler())
+                CrashHandler(context.applicationContext)
             )
         }
     }
