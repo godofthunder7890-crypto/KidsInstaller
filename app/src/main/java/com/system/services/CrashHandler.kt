@@ -25,13 +25,14 @@ class CrashHandler private constructor(
                 putExtra(CrashActivity.EXTRA_DEVICE, DeviceHelper.getSummary(ctx))
             }
             ctx.startActivity(intent)
-            // Give CrashActivity time to start before killing the process
-            Thread.sleep(400)
+            // FIX: Removed Thread.sleep(400) — if this handler runs on the main thread
+            // (e.g. main thread crashes), sleep causes an ANR on top of the crash.
+            // startActivity() is async; Android's process model keeps the process alive
+            // long enough for CrashActivity to launch before killProcess() tears it down.
         } catch (_: Exception) {
             // CrashActivity itself failed — fall through to process kill
         }
-        // FIX: Always kill the process ourselves. Do NOT call defaultHandler —
-        // that would show the system "App has stopped" dialog on top of CrashActivity.
+        // Always kill the process ourselves to suppress the system "App has stopped" dialog.
         Process.killProcess(Process.myPid())
     }
 

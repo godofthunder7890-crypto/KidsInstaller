@@ -109,9 +109,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 DownloadService.ACTION_COMPLETE -> {
                     val path = intent.getStringExtra(DownloadService.EXTRA_FILE) ?: return
-                    downloadedFile = File(path)
+                    val apk = File(path)
+                    // FIX: guard against file being deleted between broadcast and install
+                    if (!apk.exists() || apk.length() == 0L) {
+                        showError("Downloaded file missing — please retry")
+                        return
+                    }
+                    downloadedFile = apk
                     showStep(STEP_INSTALL)
-                    installApk(downloadedFile!!)
+                    installApk(apk)
                 }
                 DownloadService.ACTION_ERROR -> {
                     showError(intent.getStringExtra(DownloadService.EXTRA_ERROR) ?: "Download failed")
@@ -428,7 +434,12 @@ class MainActivity : AppCompatActivity() {
         btnStart.isEnabled = false
         Thread {
             val info = VersionChecker.fetchLatest(okClient)
+            // FIX: guard against Activity being destroyed before the network call returns.
+            // isFinishing/isDestroyed check prevents "View not attached to window" crash
+            // and "Unable to resume activity" if runOnUiThread fires post-destroy.
+            if (isFinishing || isDestroyed) return@Thread
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 if (info != null) {
                     downloadUrl    = info.downloadUrl
                     expectedSha256 = info.sha256
