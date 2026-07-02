@@ -66,9 +66,14 @@ object AutoUpdater {
             val apkFile = downloadFile(release.apkUrl, File(ctx.cacheDir, "kids_installer_update.apk"))
                 ?: return@withContext
 
-            // FIX #5: Verify SHA256 when a .sha256 asset is present
+            // FIX #5: Verify SHA256 when a .sha256 asset is present.
+            // GitHub sha256 files often use GNU coreutils format: "<hex>  filename.apk"
+            // — extract only the first whitespace-separated token (the actual 64-char digest).
             if (release.sha256Url.isNotEmpty()) {
-                val expectedHash = fetchText(release.sha256Url).trim()
+                val rawHashLine  = fetchText(release.sha256Url).trim()
+                val expectedHash = rawHashLine.split(Regex("\\s+")).firstOrNull()
+                    ?.takeIf { it.length == 64 && it.all { c -> c.isLetterOrDigit() } }
+                    ?: rawHashLine   // fallback: use entire line if it looks like a bare hash
                 if (expectedHash.isNotBlank() && !SHA256Helper.verify(apkFile, expectedHash)) {
                     apkFile.delete()
                     Log.e(TAG, "SHA256 mismatch — aborting update")
