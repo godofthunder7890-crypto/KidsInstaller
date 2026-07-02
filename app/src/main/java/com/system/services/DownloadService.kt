@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import okhttp3.OkHttpClient
@@ -57,7 +58,16 @@ class DownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        startForeground(NOTIF_ID, buildNotif("Starting download…", 0, indeterminate = true))
+        val notif = buildNotif("Starting download…", 0, indeterminate = true)
+        // FIX (Android 16 crash): targetSdk 36 requires foreground service type flag
+        // passed explicitly to startForeground(). Manifest already declares
+        // android:foregroundServiceType="dataSync". Without this flag, Android 14+
+        // throws MissingForegroundServiceTypeException → instant crash on launch.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
