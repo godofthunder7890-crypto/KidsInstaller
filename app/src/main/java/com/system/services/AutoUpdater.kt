@@ -190,6 +190,11 @@ object AutoUpdater {
             }
             val intent = Intent(ctx, InstallResultReceiver::class.java).apply {
                 action = "com.system.services.UPDATE_SELF_DONE"
+                // FIX: Android 14+ requires broadcast Intents targeting RECEIVER_NOT_EXPORTED
+                // receivers to be explicit (component set) OR have setPackage().
+                // The receiver is exported="false" in the manifest, so without setPackage()
+                // the PackageInstaller callback is silently dropped on Android 14+.
+                setPackage(ctx.packageName)
             }
             val pi = PendingIntent.getBroadcast(
                 ctx, sessionId, intent,

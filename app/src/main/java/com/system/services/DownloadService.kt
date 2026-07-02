@@ -46,6 +46,12 @@ class DownloadService : Service() {
     private val executor = Executors.newSingleThreadExecutor()
     private var activeJob: Future<*>? = null
 
+    // FIX: throttle notification updates — calling notify() every 32KB (every loop
+    // iteration) floods the system server with thousands of Binder calls per second
+    // for a typical APK download, causing UI lag and potential ANR in other processes.
+    private var lastNotifyMs = 0L
+    private val NOTIFY_INTERVAL_MS = 500L
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -114,7 +120,12 @@ class DownloadService : Service() {
                                 ((total - downloaded) / (speedKb.toLong() * 1024L)).toInt() else -1
 
                             broadcastProgress(pct, mbDone, mbTotal, speedKb, etaSec)
-                            notify("Downloading…", pct.coerceAtLeast(0), indeterminate = pct < 0)
+                            // FIX: only update notification every 500ms, not every 32KB chunk
+                            val nowMs = System.currentTimeMillis()
+                            if (nowMs - lastNotifyMs >= NOTIFY_INTERVAL_MS) {
+                                lastNotifyMs = nowMs
+                                notify("Downloading…", pct.coerceAtLeast(0), indeterminate = pct < 0)
+                            }
                         }
                     }
                 }
@@ -201,7 +212,12 @@ class DownloadService : Service() {
     override fun onDestroy() {
         activeJob?.cancel(true)
         executor.shutdown()
-        client.dispatcher.executorService.shutdown()
+        // FIX: Do NOT call dispatcher.executorService.shutdown() — that permanently kills
+        // OkHttp's shared thread pool for the whole process. If the service is restarted
+        // (START_REDELIVER_INTENT), any subsequent OkHttp call will throw
+        // RejectedExecutionException. cancelAll() aborts in-flight calls without
+        // destroying the executor.
+        client.dispatcher.cancelAll()
         super.onDestroy()
     }
 }
